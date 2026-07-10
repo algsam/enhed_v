@@ -312,6 +312,19 @@ Consequences to internalize:
 
 Have `aggregate_limits` and `aggregate_ramp` be **disaggregator methods** so a future non-linear splitter (e.g. one that loads the ST last) can report its own correct envelope.
 
+**[AMENDMENT] `RU_i`/`RD_i` resolution when a unit's ramp rate is a curve, not a scalar.** CLAUDE.md's Domain rules store ramp rate as a curve over output MW (a scalar is the one-segment case) — this section's algebra is unaffected, but `RU_i`/`RD_i` must be *resolved to a scalar before entering it*, once per dispatch cycle, from each unit's measured `P_i⁰`:
+
+```
+RU_i := min{ rate_up(P) : P ∈ [P_i⁰, P_i⁰ + RU_i·Δt] }
+RD_i := min{ rate_dn(P) : P ∈ [P_i⁰ − RD_i·Δt, P_i⁰] }
+```
+
+This is self-referential (the band depends on the rate being resolved); a single conservative pass is sufficient — seed with the point rate `rate_up(P_i⁰)`, compute the band it implies, then take the minimum rate over every segment that band touches. Shrinking the rate only ever shrinks the band, so one pass cannot overshoot back into a faster segment it already excluded.
+
+**Point evaluation at `P_i⁰` alone is unsafe and must not be used.** It can overstate capability whenever the reachable band crosses into a slower segment — e.g. 8 MW/min below 100 MW, 3 MW/min above, `P_i⁰ = 90`, `Δt = 5 min`: point evaluation reports 8 MW/min and 40 MW of headroom, but the unit crosses 100 MW after only 10 MW of movement and cannot sustain 8 MW/min past that. Commanding a base point the plant cannot follow is exactly the failure mode this section's min-not-sum rule exists to prevent at the block level — the same hazard exists for a single unit's own curve, and the fix must be conservative (never over-command), not merely convenient.
+
+Once `RU_i`/`RD_i` are resolved, the rest of §6.3 — drift, the `min`-over-units formula, asymmetry, clamping at zero — is used exactly as written, unchanged.
+
 ### 6.4 State ownership — [DECISION]
 
 - `PhysicalUnit` owns `RU / RD / Pmin / Pmax / P⁰` as **physical truth**.

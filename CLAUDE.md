@@ -4,6 +4,8 @@ Economic dispatch / AGC base-point engine. The full task specification is in `SP
 
 This file holds **invariants that must hold on every edit**, for the life of the project. If a requested change would violate one of these, stop and tell me rather than proceeding.
 
+**Precedence:** `SPEC.md` governs *formulations* (the exact math, the exact algebra, what a `[DECISION]` section says to implement as written). This file governs *invariants* (properties that must hold regardless of formulation). When a line in this file and a formulation in `SPEC.md` appear to conflict — e.g. a stored representation here implies math that a SPEC formula doesn't accommodate as written — **stop and ask**, rather than silently choosing one document over the other. Prefer resolving the conflict as an explicit, documented amendment to the SPEC formulation (see SPEC §6.3 for a worked example) over quietly reverting either document.
+
 ---
 
 ## Solver
@@ -57,7 +59,7 @@ This file holds **invariants that must hold on every edit**, for the life of the
 - Reserve requirements and reserve variables are **keyed by product name** (`[unit, product]`) from day one, with exactly one product populated in v1. Same argument as bus-indexing: the key costs nothing now, re-indexing later is the painful path.
 - A generator may hold **many cost curves but exactly one active**. `set_active` is atomic (never zero, never two). The active selection is part of the saved case and is **recorded in every result** — reproducibility is a hard control-room requirement.
 - For CC blocks, the active curve is bound to the active configuration; the two selectors must never disagree.
-- **Ramp rate is a curve** vs MW (a scalar is the one-segment case), used by both ramp constraints and reserve deliverability.
+- **Ramp rate is a curve** vs MW (a scalar is the one-segment case), used by both ramp constraints and reserve deliverability. Curve-valued rates are resolved to a scalar **conservatively**, once per cycle, from measured `P0` — see SPEC §6.3's amendment for the exact resolution and why point evaluation at `P0` is unsafe (it can overstate capability across a breakpoint). Every consumer of a ramp rate (ramp constraints, `aggregate_ramp`, reserve headroom) takes the resolved scalar, never the curve itself.
 - Ramp limits are measured from **actual current output `P0`**, never from a schedule.
 - Renewables are curtailable: forecast is an **upper bound**, not an equality. Nuclear is must-run at a fixed setpoint and excluded from regulation.
 - Aggregate-headroom reserve caps each unit's contribution by deliverability: `min(Pmax_i − P_i, RampRate_i · T_reserve)`.

@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: ed
+Version: 0.1.0
+Summary: Real-time economic dispatch (RTED/SCED) engine — AGC base-point calculation
+Requires-Python: >=3.12
+Requires-Dist: highspy
+Requires-Dist: pydantic>=2
+Requires-Dist: numpy
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
