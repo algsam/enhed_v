@@ -8,6 +8,7 @@ from ed.domain.capabilities import (
 )
 from ed.domain.entity import DispatchableEntity
 from ed.domain.enums import Mode, ResourceType, SteamSource
+from ed.domain.generator import Generator
 from ed.domain.partition import PartitionError, assert_partition
 from ed.domain.physical_unit import PhysicalUnit, UnitCharacteristics
 from ed.domain.ramp import RampRateCurve, resolve_ramp_down_mw_per_min, resolve_ramp_up_mw_per_min
@@ -15,6 +16,7 @@ from ed.domain.ramp import RampRateCurve, resolve_ramp_down_mw_per_min, resolve_
 __all__ = [
     "DispatchableEntity",
     "ForecastLimited",
+    "Generator",
     "Mode",
     "MustRun",
     "PartitionError",
