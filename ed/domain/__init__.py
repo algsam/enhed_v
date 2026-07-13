@@ -6,6 +6,7 @@ from ed.domain.capabilities import (
     SignedInjection,
     StorageCapable,
 )
+from ed.domain.cc_block import CCBlock, CCBlockConfig, CCBlockRoster
 from ed.domain.entity import DispatchableEntity
 from ed.domain.enums import Mode, ResourceType, SteamSource
 from ed.domain.generator import Generator
@@ -14,6 +15,9 @@ from ed.domain.physical_unit import PhysicalUnit, UnitCharacteristics
 from ed.domain.ramp import RampRateCurve, resolve_ramp_down_mw_per_min, resolve_ramp_up_mw_per_min
 
 __all__ = [
+    "CCBlock",
+    "CCBlockConfig",
+    "CCBlockRoster",
     "DispatchableEntity",
     "ForecastLimited",
     "Generator",

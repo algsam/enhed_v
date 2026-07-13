@@ -5,9 +5,14 @@ DispatchableEntity").
 This is the minimal concrete resource needed to drive the first
 end-to-end dispatch (build order step 4): a pure signed-injection
 generator backed directly by a canonical `CostCurve`, decomposed into QP
-segments exactly per SPEC §4.2. It carries no ramp/reserve behavior yet —
-those are later build-order steps (§13 steps 5, 7) layered on via the same
-capability protocols, not by editing this class's contribution contract.
+segments exactly per SPEC §4.2. It carries no ramp-*constraint* behavior
+yet (that is a later build-order step), but does carry the reserve-facing
+data `ReserveModule` needs (build order step 7): `reserve_eligible`
+(explicit per CLAUDE.md "Domain rules", never inferred from
+resource_type) and a resolved `ramp_up_mw_per_min` scalar for the
+deliverability cap (SPEC §6.3 amendment: resolved once per cycle from
+measured P0 — this class takes the already-resolved scalar, it does not
+resolve a `RampRateCurve` itself).
 
 Deliberately *not* wired to `PhysicalUnit`/`ResourceType` here: associating
 a Generator with its owning `PhysicalUnit` and identity metadata is
@@ -31,10 +36,42 @@ class Generator:
     (a generator is the special case `lower >= 0`, SPEC §5.6).
     """
 
-    def __init__(self, bus: str, cost_curve: CostCurve) -> None:
+    def __init__(
+        self,
+        bus: str,
+        cost_curve: CostCurve,
+        *,
+        reserve_eligible: bool = False,
+        ramp_up_mw_per_min: float | None = None,
+    ) -> None:
+        if reserve_eligible and ramp_up_mw_per_min is None:
+            raise ValueError(
+                "reserve_eligible=True requires ramp_up_mw_per_min: the deliverability "
+                "cap is mandatory (CLAUDE.md 'Domain rules') — without it a reserve "
+                "module would reserve MW this unit cannot actually reach in time"
+            )
         self.bus = bus
         self.cost_curve = cost_curve
+        self.reserve_eligible = reserve_eligible
+        self.ramp_up_mw_per_min = ramp_up_mw_per_min
         self._segment_vars: tuple[VarHandle, ...] = ()
+
+    @property
+    def capacity_mw(self) -> float:
+        """Total dispatchable range (`Pmax - Pmin`), i.e. the curve's own
+        width — the same relative scale `energy_vars()` sums to (SPEC §8's
+        `Pmax_e` headroom bound, expressed relative to `Pmin_e` since that
+        is the frame every segment variable already uses).
+        """
+        return self.cost_curve.x_n - self.cost_curve.x0
+
+    def energy_vars(self) -> tuple[VarHandle, ...]:
+        """This generator's own energy (segment-fill) variable handles, for
+        a `ReserveModule` to couple into a `P_e + R_up_e <= Pmax_e` row
+        (SPEC §8 Mode B) or an aggregate headroom row (Mode A). Populated
+        by `contribute_variables`; call only after that has run.
+        """
+        return self._segment_vars
 
     def contribute_variables(self, ctx: BuildContext) -> tuple[VarHandle, ...]:
         segment_vars = []

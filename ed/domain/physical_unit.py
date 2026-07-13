@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from ed.curves.curve import CostCurve
 from ed.domain.enums import Mode, ResourceType, SteamSource
 from ed.domain.ramp import RampRateCurve
 
@@ -23,6 +24,14 @@ class UnitCharacteristics(BaseModel):
 
     A CT's SIMPLE_CYCLE characteristics differ from its COMBINED_CYCLE
     characteristics: different Pmax, ramp rates, heat rate, emissions rate.
+
+    `cost_curve` is this unit's *own* curve, used only when the unit is
+    dispatched standalone (SPEC §5.3 corollary: "disaggregation is setpoint
+    allocation, not cost decomposition" — an individual member's cost is not
+    economically meaningful once it is contributing to an active CC config).
+    It is therefore populated for SIMPLE_CYCLE characteristics and left
+    `None` for COMBINED_CYCLE characteristics, whose aggregate cost lives on
+    the config (`CCBlockConfig.cost_curve`) instead, never on the member.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -31,6 +40,7 @@ class UnitCharacteristics(BaseModel):
     pmax_mw: float
     ramp_up: RampRateCurve
     ramp_down: RampRateCurve
+    cost_curve: CostCurve | None = None
 
     @model_validator(mode="after")
     def _check_bounds(self) -> UnitCharacteristics:
